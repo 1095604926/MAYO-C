@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
+#include <stdio.h>
 #include <mem.h>
 #include <mayo.h>
 #include <randombytes.h>
@@ -390,6 +391,15 @@ int mayo_sign_signature(const mayo_params_t *p, unsigned char *sig,
     const int param_sk_seed_bytes = PARAM_sk_seed_bytes(p);
     const int param_salt_bytes = PARAM_salt_bytes(p);
 
+    // t,y: m
+    // x: ko
+    // O: (n-o)*o
+    // vi: n-o
+    // s: kn
+    // A: m*ko
+    // Mi: m*o
+
+    // expand sk 
     ret = mayo_expand_sk(p, csk, &sk);
     if (ret != MAYO_OK) {
         goto err;
@@ -398,13 +408,14 @@ int mayo_sign_signature(const mayo_params_t *p, unsigned char *sig,
     seed_sk = csk;
 
 
-    // hash message
+    // 08: hash message
     shake256(tmp, param_digest_bytes, m, mlen);
 
     uint64_t *P1 = sk.p;
     uint64_t *L  = P1 + PARAM_P1_limbs(p);
     uint64_t Mtmp[K_MAX * O_MAX * M_VEC_LIMBS_MAX] = {0};
-
+    
+    // no TARGET_BIG_ENDIAN
 #ifdef TARGET_BIG_ENDIAN
     for (int i = 0; i < PARAM_P1_limbs(p); ++i) {
         P1[i] = BSWAP64(P1[i]);
@@ -414,7 +425,7 @@ int mayo_sign_signature(const mayo_params_t *p, unsigned char *sig,
     }
 #endif
 
-    // choose the randomizer
+    // 09: choose the randomizer
     #if defined(PQM4) || defined(HAVE_RANDOMBYTES_NORETVAL)
     randombytes(tmp + param_digest_bytes, param_salt_bytes);
     #else
@@ -424,7 +435,7 @@ int mayo_sign_signature(const mayo_params_t *p, unsigned char *sig,
     }
     #endif
 
-    // hashing to salt
+    // 10: hashing to salt
     memcpy(tmp + param_digest_bytes + param_salt_bytes, seed_sk,
            param_sk_seed_bytes);
     shake256(salt, param_salt_bytes, tmp,
@@ -435,20 +446,24 @@ int mayo_sign_signature(const mayo_params_t *p, unsigned char *sig,
 #endif
 
     // hashing to t
+    // tmp = M_digest || salt || seed_sk
     memcpy(tmp + param_digest_bytes, salt, param_salt_bytes);
     ctrbyte = tmp + param_digest_bytes + param_salt_bytes + param_sk_seed_bytes;
 
+    // SHAKE256(M_digest || salt)
     shake256(tenc, param_m_bytes, tmp, param_digest_bytes + param_salt_bytes);
 
     decode(tenc, t, param_m); // may not be necessary
 
     for (int ctr = 0; ctr <= 255; ++ctr) {
+        // tmp = M_digest || salt || seed_sk || ctr
         *ctrbyte = (unsigned char)ctr;
 
+        // 16: V <- SHAKE256(M_digest || salt || seed_sk || ctr)
         shake256(V, param_k * param_v_bytes + param_r_bytes, tmp,
                  param_digest_bytes + param_salt_bytes + param_sk_seed_bytes + 1);
 
-        // decode the v_i vectors
+        // 18: decode the v_i vectors
         for (int i = 0; i <= param_k - 1; ++i) {
             decode(V + i * param_v_bytes, Vdec + i * param_v, param_v);
         }
@@ -456,7 +471,9 @@ int mayo_sign_signature(const mayo_params_t *p, unsigned char *sig,
         // compute M_i matrices and all v_i*P1*v_j
         compute_M_and_VPV(p, Vdec, L, P1, Mtmp, (uint64_t*) A);
 
+        // 31: y
         compute_rhs(p, (uint64_t*) A, t, y);
+        // 32,34: A
         compute_A(p, Mtmp, A);
 
         for (int i = 0; i < param_m; i++)
@@ -468,6 +485,7 @@ int mayo_sign_signature(const mayo_params_t *p, unsigned char *sig,
                param_k *
                param_o);
 
+        // 38
         if (sample_solution(p, A, y, r, x, param_k, param_o, param_m, param_A_cols)) {
             sol_found = 1;
             break;
@@ -483,12 +501,16 @@ int mayo_sign_signature(const mayo_params_t *p, unsigned char *sig,
 
     for (int i = 0; i <= param_k - 1; ++i) {
         vi = Vdec + i * (param_n - param_o);
+        // 45: Ox
         mat_mul(sk.O, x + i * param_o, Ox, param_o, param_n - param_o, 1);
+        // 45: vi + Ox
         mat_add(vi, Ox, s + i * param_n, param_n - param_o, 1);
+        // 45: || x
         memcpy(s + i * param_n + (param_n - param_o), x + i * param_o, param_o);
     }
     encode(s, sig, param_n * param_k);
 
+    // sig = s || salt
     memcpy(sig + param_sig_bytes - param_salt_bytes, salt, param_salt_bytes);
     *siglen = param_sig_bytes;
 
@@ -511,7 +533,9 @@ int mayo_sign(const mayo_params_t *p, unsigned char *sm,
     int ret = MAYO_OK;
     const int param_sig_bytes = PARAM_sig_bytes(p);
     size_t siglen;
+    // 08: sm = sig || m
     memmove(sm + param_sig_bytes, m, mlen);
+    // 05: produce signature
     ret = mayo_sign_signature(p, sm, &siglen, sm + param_sig_bytes, mlen, csk);
     if (ret != MAYO_OK || siglen != (size_t) param_sig_bytes){
         memset(sm, 0, siglen + mlen);
@@ -565,7 +589,8 @@ int mayo_keypair_compact(const mayo_params_t *p, unsigned char *cpk,
     uint64_t *P1 = P;
     uint64_t *P2 = P + param_P1_limbs;
 
-    // seed_sk $←- B^(sk_seed bytes)
+    // no PQM4 and HAVE_RANDOMBYTES_NORETVAL
+    // 02: seed_sk $←- B^(sk_seed bytes)
     #if defined(PQM4) || defined(HAVE_RANDOMBYTES_NORETVAL)
     randombytes(seed_sk, param_sk_seed_bytes);
     #else
@@ -575,31 +600,33 @@ int mayo_keypair_compact(const mayo_params_t *p, unsigned char *cpk,
     }
     #endif
 
-    // S ← shake256(seedsk, pk seed bytes + O bytes)
+    // 05: S ← shake256(seedsk, pk seed bytes + O bytes)
     shake256(S, param_pk_seed_bytes + param_O_bytes, seed_sk,
              param_sk_seed_bytes);
-    // seed_pk ← s[0 : pk_seed_bytes]
+    // 06: seed_pk ← s[0 : pk_seed_bytes]
     seed_pk = S;
 
-    // o ← Decode_o(s[pk_seed_bytes : pk_seed_bytes + o_bytes])
+    // 07: o ← Decode_o(s[pk_seed_bytes : pk_seed_bytes + o_bytes])
     decode(S + param_pk_seed_bytes, O, param_v * param_o);
 
 #ifdef ENABLE_CT_TESTING
     VALGRIND_MAKE_MEM_DEFINED(seed_pk, param_pk_seed_bytes);
 #endif
 
+    // 10,11,12
     expand_P1_P2(p, P, seed_pk);
 
-    // compute P3 (modifies P2 in the process)
+    // 15,16: compute P3 (modifies P2 in the process)
     compute_P3(p, P1, P2, O, P3);
 
-    // store seed_pk in cpk
+    // 19: store seed_pk in cpk
     memcpy(cpk, seed_pk, param_pk_seed_bytes);
 
     uint64_t P3_upper[P3_LIMBS_MAX];
 
-    // compute Upper(P3) and store in cpk
+    // 16: compute Upper(P3)
     m_upper(p, P3, P3_upper, param_o);
+    // 19: store P3 in cpk
     pack_m_vecs(P3_upper, cpk + param_pk_seed_bytes, param_P3_limbs/m_vec_limbs, param_m);
 
 #if !defined(PQM4) && !defined(HAVE_RANDOMBYTES_NORETVAL)
@@ -613,6 +640,7 @@ int mayo_keypair_compact(const mayo_params_t *p, unsigned char *cpk,
 
 int mayo_expand_pk(const mayo_params_t *p, const unsigned char *cpk,
                    uint64_t *pk) {
+    // pk = P1,P2,P3
     expand_P1_P2(p, pk, cpk);
 
     unpack_m_vecs(cpk + PARAM_pk_seed_bytes(p), pk + PARAM_P1_limbs(p) + PARAM_P2_limbs(p), PARAM_P3_limbs(p)/PARAM_m_vec_limbs(p), PARAM_m(p));
@@ -659,10 +687,10 @@ int mayo_verify(const mayo_params_t *p, const unsigned char *m,
     }
 #endif
 
-    // hash m
+    // 16: hash m
     shake256(tmp, param_digest_bytes, m, mlen);
 
-    // compute t
+    // 17: compute t m
     memcpy(tmp + param_digest_bytes, sig + param_sig_bytes - param_salt_bytes,
            param_salt_bytes);
     shake256(tEnc, param_m_bytes, tmp, param_digest_bytes + param_salt_bytes);
