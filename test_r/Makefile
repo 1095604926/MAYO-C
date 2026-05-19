@@ -50,4 +50,4 @@ kat:
 clean:
 	rm -f $(wildcard *.exe)
 
-.PHONY: all ref opt kat clean print
+.PHONY: all test kat clean
