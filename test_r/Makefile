@@ -1,8 +1,6 @@
 
 CC ?= gcc
 
-TARGET := test.exe
-
 # ============================================================
 # Source files
 # ============================================================
@@ -42,14 +40,14 @@ LDLIBS :=
 all: test
 
 test:
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(SRC) $(MAIN_SRC) $(LDFLAGS) $(LDLIBS) -o $(TARGET)
-	@echo "Built $(TARGET) using $(MAIN_SRC)"
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(SRC) $(MAIN_SRC) $(LDFLAGS) $(LDLIBS) -o test.exe
+	@echo "Built test.exe using $(MAIN_SRC)"
 
 kat:
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(SRC) $(KAT_SRC) $(LDFLAGS) $(LDLIBS) -o $(TARGET)
-	@echo "Built $(TARGET) using $(KAT_SRC)"
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(SRC) $(KAT_SRC) $(LDFLAGS) $(LDLIBS) -o kat.exe
+	@echo "Built kat.exe using $(KAT_SRC)"
 
 clean:
-	rm -f $(TARGET)
+	rm -f $(wildcard *.exe)
 
 .PHONY: all ref opt kat clean print
