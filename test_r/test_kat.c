@@ -48,7 +48,7 @@ static int test_sig_kat(const mayo_params_t *p) {
     FILE                *fp_rsp;
     unsigned char       pk_rsp[PARAM_cpk_bytes(p)], sk_rsp[PARAM_csk_bytes(p)];
 
-    sprintf(fn_rsp, "../KAT/PQCsignKAT_%d_%s.rsp", PARAM_csk_bytes(p), PARAM_name(p));
+    sprintf(fn_rsp, "./KAT/PQCsignKAT_%d_%s.rsp", PARAM_csk_bytes(p), PARAM_name(p));
     if ( (fp_rsp = fopen(fn_rsp, "r")) == NULL ) {
         printf("Couldn't open <%s> for read\n", fn_rsp);
         return KAT_FILE_OPEN_ERROR;

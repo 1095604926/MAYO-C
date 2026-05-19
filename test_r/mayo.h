@@ -13,7 +13,7 @@
 
 
 // opt?
-// #define MAYO_BUILD_TYPE_OPT
+#define MAYO_BUILD_TYPE_OPT
 
 #ifndef MAYO_BUILD_TYPE_OPT
 #define MAYO_BUILD_TYPE_REF
