@@ -8,7 +8,7 @@ CC ?= gcc
 SRC_ALL := $(wildcard *.c)
 
 MAIN_SRC := test_mayo.c
-KAT_SRC  := test_kat.c
+KAT_SRC  := ./KAT/test_kat.c
 
 # 普通源文件：排除 main 测试文件
 SRC := $(filter-out $(MAIN_SRC) $(KAT_SRC),$(SRC_ALL))
