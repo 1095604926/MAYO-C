@@ -48,6 +48,6 @@ kat:
 	@echo "Built kat.exe using $(KAT_SRC)"
 
 clean:
-	rm -f $(wildcard *.exe)
+	rm -f *.exe
 
 .PHONY: all test kat clean
