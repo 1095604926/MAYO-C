@@ -8,8 +8,18 @@
 
 // 1 2 3 5
 #ifndef MAYO_VARIANT
-#define MAYO_VARIANT MAYO_2
+#define MAYO_VARIANT MAYO_1
 #endif
+
+
+// opt?
+// #define MAYO_BUILD_TYPE_OPT
+
+#ifndef MAYO_BUILD_TYPE_OPT
+#define MAYO_BUILD_TYPE_REF
+#define ENABLE_PARAMS_DYNAMIC
+#endif
+
 
 #define F_TAIL_LEN 4
 #define F_TAIL_64                                                              \
