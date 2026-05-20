@@ -8,7 +8,7 @@
 
 // 1 2 3 5
 #ifndef MAYO_VARIANT
-#define MAYO_VARIANT MAYO_1
+#define MAYO_VARIANT MAYO_2
 #endif
 
 

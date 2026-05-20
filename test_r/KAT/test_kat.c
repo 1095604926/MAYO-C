@@ -151,7 +151,7 @@ static int test_sig_kat(const mayo_params_t *p) {
     fclose(fp_rsp);
 
     printf(PARAM_name(p));
-    printf(" Known Answer Tests PASSED. \n");
+    printf(" Known Answer Tests PASSED %d. \n", count);
     printf("\n\n");
 
     return KAT_SUCCESS;
