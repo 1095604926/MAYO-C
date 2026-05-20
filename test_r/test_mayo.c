@@ -10,7 +10,7 @@
 
 static void print_hex(const unsigned char *hex, int len) {
     for (int i = 0; i < len;  ++i) {
-        printf("%02x", hex[i]);
+        printf("%02X", hex[i]);
     }
     printf("\n");
 }
@@ -45,6 +45,10 @@ static int test_mayo(const mayo_params_t *p) {
         goto err;
     }
 
+    printf("pk: ");
+    print_hex(pk, PARAM_cpk_bytes(p));
+    printf("sk: ");
+    print_hex(sk, PARAM_csk_bytes(p));
 
     size_t smlen = PARAM_sig_bytes(p) + 32;
 
@@ -55,10 +59,6 @@ static int test_mayo(const mayo_params_t *p) {
         goto err;
     }
 
-    printf("pk: ");
-    print_hex(pk, PARAM_cpk_bytes(p));
-    printf("sk: ");
-    print_hex(sk, PARAM_csk_bytes(p));
     printf("sm: ");
     print_hex(sig, smlen);
 
